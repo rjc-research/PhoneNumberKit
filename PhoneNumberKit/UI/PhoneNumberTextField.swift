@@ -118,13 +118,13 @@ open class PhoneNumberTextField: UITextField, UITextFieldDelegate {
 
     private var _withDefaultPickerUI: Bool = false {
         didSet {
-            if #available(iOS 11.0, *), flagButton.actions(forTarget: self, forControlEvent: .touchUpInside) == nil {
+            if #available(iOS 9.0, *), flagButton.actions(forTarget: self, forControlEvent: .touchUpInside) == nil {
                 flagButton.addTarget(self, action: #selector(didPressFlagButton), for: .touchUpInside)
             }
         }
     }
 
-    @available(iOS 11.0, *)
+    @available(iOS 9.0, *)
     public var withDefaultPickerUI: Bool {
         get { _withDefaultPickerUI }
         set { _withDefaultPickerUI = newValue }
@@ -310,7 +310,7 @@ open class PhoneNumberTextField: UITextField, UITextFieldDelegate {
         self.attributedPlaceholder = ph
     }
 
-    @available(iOS 11.0, *)
+    @available(iOS 9.0, *)
     @objc func didPressFlagButton() {
         guard withDefaultPickerUI else { return }
         let vc = CountryCodePickerViewController(phoneNumberKit: phoneNumberKit)
@@ -482,7 +482,7 @@ open class PhoneNumberTextField: UITextField, UITextFieldDelegate {
     }
 }
 
-@available(iOS 11.0, *)
+@available(iOS 9.0, *)
 extension PhoneNumberTextField: CountryCodePickerDelegate {
 
     func countryCodePickerViewControllerDidPickCountry(_ country: CountryCodePickerViewController.Country) {

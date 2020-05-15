@@ -3,12 +3,12 @@
 
 import UIKit
 
-@available(iOS 11.0, *)
+@available(iOS 9.0, *)
 protocol CountryCodePickerDelegate: class {
     func countryCodePickerViewControllerDidPickCountry(_ country: CountryCodePickerViewController.Country)
 }
 
-@available(iOS 11.0, *)
+@available(iOS 9.0, *)
 public class CountryCodePickerViewController: UITableViewController {
 
     lazy var searchController = UISearchController(searchResultsController: nil)
@@ -19,7 +19,7 @@ public class CountryCodePickerViewController: UITableViewController {
 
     var shouldRestoreNavigationBarToHidden = false
 
-    var hasCurrent = true
+    var hasCurrent = false
     var hasCommon = true
 
     lazy var allCountries = phoneNumberKit
@@ -61,7 +61,7 @@ public class CountryCodePickerViewController: UITableViewController {
 
     weak var delegate: CountryCodePickerDelegate?
 
-    lazy var cancelButton = UIBarButtonItem(barButtonSystemItem: .cancel, target: self, action: #selector(dismissAnimated))
+    lazy var cancelButton = UIBarButtonItem(title: getLocalizableString("PhoneNumberKit.CountryCodePicker.Cancel"), style: .plain, target: self, action: #selector(dismissAnimated))
 
     /**
      Init with a phone number kit instance. Because a PhoneNumberKit initialization is expensive you can must pass a pre-initialized instance to avoid incurring perf penalties.
@@ -87,13 +87,16 @@ public class CountryCodePickerViewController: UITableViewController {
     }
 
     func commonInit() {
-        self.title = NSLocalizedString("PhoneNumberKit.CountryCodePicker.Title", value: "Choose your country", comment: "Title of CountryCodePicker ViewController")
+        self.title = getLocalizableString("PhoneNumberKit.CountryCodePicker.Title")
 
         tableView.register(Cell.self, forCellReuseIdentifier: Cell.reuseIdentifier)
         searchController.searchResultsUpdater = self
-        searchController.obscuresBackgroundDuringPresentation = false
-        searchController.searchBar.backgroundColor = .clear
-        navigationItem.searchController = searchController
+        if #available(iOS 11.0, *) {
+            searchController.obscuresBackgroundDuringPresentation = false
+            searchController.searchBar.backgroundColor = .clear
+            searchController.searchBar.placeholder = getLocalizableString("PhoneNumberKit.CountryCodePicker.SearchPlacholder")
+            navigationItem.searchController = searchController
+        }
         definesPresentationContext = true
     }
 
@@ -148,9 +151,9 @@ public class CountryCodePickerViewController: UITableViewController {
         } else if section == 0, hasCurrent {
             return NSLocalizedString("PhoneNumberKit.CountryCodePicker.Current", value: "Current", comment: "Name of \"Current\" section")
         } else if section == 0, !hasCurrent, hasCommon {
-            return NSLocalizedString("PhoneNumberKit.CountryCodePicker.Common", value: "Common", comment: "Name of \"Common\" section")
+            return ""
         } else if section == 1, hasCurrent, hasCommon {
-            return NSLocalizedString("PhoneNumberKit.CountryCodePicker.Common", value: "Common", comment: "Name of \"Common\" section")
+            return ""
         }
         return countries[section].first?.name.first.map(String.init)
     }
@@ -178,9 +181,20 @@ public class CountryCodePickerViewController: UITableViewController {
         delegate?.countryCodePickerViewControllerDidPickCountry(country)
         tableView.deselectRow(at: indexPath, animated: true)
     }
+    
+    private func getLocalizableString(_ key: String) -> String {
+        let userDefaults: UserDefaults = UserDefaults.standard
+        let array: NSArray = userDefaults.object(forKey: "AppleLanguages") as! NSArray
+        let currentLanguage: String = array.object(at: 0) as! String
+
+        if let path = Bundle.main.path(forResource: currentLanguage, ofType: "lproj"), let bundle = Bundle(path: path) {
+            return bundle.localizedString(forKey: key, value: nil, table: nil)
+        }
+        return key
+    }
 }
 
-@available(iOS 11.0, *)
+@available(iOS 9.0, *)
 extension CountryCodePickerViewController: UISearchResultsUpdating {
 
     var isFiltering: Bool {
@@ -205,7 +219,7 @@ extension CountryCodePickerViewController: UISearchResultsUpdating {
 
 // MARK: Types
 
-@available(iOS 11.0, *)
+@available(iOS 9.0, *)
 internal extension CountryCodePickerViewController {
 
     struct Country {
@@ -216,8 +230,25 @@ internal extension CountryCodePickerViewController {
 
         init?(for countryCode: String, with phoneNumberKit: PhoneNumberKit) {
             let flagBase = UnicodeScalar("🇦").value - UnicodeScalar("A").value
+            let userDefaults: UserDefaults = UserDefaults.standard
+            let array: NSArray = userDefaults.object(forKey: "AppleLanguages") as! NSArray
+            let currentLanguage: String = array.object(at: 0) as! String
+            let locale: NSLocale
+            if currentLanguage.range(of: "ja") != nil {
+                // Japanese
+                locale = Locale(identifier: "ja") as NSLocale
+            } else if currentLanguage.range(of: "zh-Hans") != nil {
+                // Simplified Chinese
+                locale = Locale(identifier: "zh_Hans") as NSLocale
+            } else if currentLanguage.range(of: "zh") != nil {
+                // Traditional Chinese
+                locale = Locale(identifier: "zh_Hant") as NSLocale
+            } else {
+                // English
+                locale = Locale(identifier: "en") as NSLocale
+            }
             guard
-                let name = (Locale.current as NSLocale).localizedString(forCountryCode: countryCode),
+                let name = locale.displayName(forKey: .countryCode, value: countryCode),
                 let prefix = phoneNumberKit.countryCode(for: countryCode)?.description
             else {
                 return nil
